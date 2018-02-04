@@ -9,7 +9,6 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.net.Socket;
 import java.net.UnknownHostException;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 
@@ -42,6 +41,7 @@ public class Esclave {
 			System.out.println("Connected");
 			Socket esclave = new Socket(serveur, port);
 			FileWalker EsclaveWalker = new FileWalker();
+			
 			OutputStream clientout = esclave.getOutputStream();
 			BufferedWriter pout = new BufferedWriter(new OutputStreamWriter(clientout));
 			InputStream clientInput = esclave.getInputStream();
@@ -50,12 +50,16 @@ public class Esclave {
 			/*
 			 * Envoi des infos pour savoir que c'est un pull
 			 */
+			System.out.println("envoi des infos");
 			String envoiInfos = PathServeur + "*pull"; // Quel dossier on veut du serveur
 			System.out.println(envoiInfos);
 			pout.write(envoiInfos);
-			pout.flush();
 			pout.newLine();
+			pout.flush();
 
+			System.out.println("envoi des infos done");
+
+			System.out.println("Reception des chemins du serveur");
 			String ServerWalker = pin.readLine();
 			File PathsServeur = new File("D:/FileTreeEsclave.txt");// création d'un fichier tampon
 			ArrayList<Fichier> fichiersServeur = new ArrayList<Fichier>(); // liste des fichiers du serveur
@@ -63,19 +67,20 @@ public class Esclave {
 			fichiersServeur = EsclaveWalker.getFiles(PathsServeur.toPath());
 			PathsServeur.delete(); // on supprime ce fichier tampon qui ne sera plus utiliser
 
+			System.out.println("Création des fichiers du client");
 			ArrayList<Fichier> fichiersLocaux = new ArrayList<Fichier>();
 			fichiersLocaux = EsclaveWalker.walk(Paths.get(PathEsclave));
-
 			/*
 			 * Si un fichier est présent sur le client mais pas sur ceux du serveur on doit
 			 * le supprimer
 			 */
+			System.out.println("Suppression des fichiers qui ne doivent pas etre sur le client");
 			for (Fichier flocaux : fichiersLocaux) {
 				boolean present = false;
 
 				for (Fichier fserveur : fichiersServeur) {
-					if (flocaux.equals(fserveur)) {
-						present = true;
+					if (flocaux.getPath().toString().equals(fserveur.getPath().toString())) {
+						present=true;
 					}
 				}
 				if (present == false) {
@@ -84,20 +89,17 @@ public class Esclave {
 					e.supprimer(f);
 				}
 			}
-			
-			fichiersLocaux = EsclaveWalker.walk(Paths.get(PathEsclave));
-			File APull = new File("D:/FileTreeEsclave.txt");// création d'un fichier tampon
-			EsclaveWalker.sendPath(Paths.get(PathEsclave), APull.toPath(), esclave); 
+
+			System.out.println("Création du fichier regroupant les fichiers à envoyer");
+			File APull = new File("D:/FileTreeEsclave2.txt");// création d'un fichier tampon			
+			EsclaveWalker.sendPath(Paths.get(PathEsclave), APull.toPath(), pout); 
 			APull.delete(); //on supprime ce fichier qui ne sera plus utiliser
 			
-			Path pathToReceive = Paths.get(PathEsclave+"/");
-			String read;
-			while ((read =pin.readLine()) != "STOP") {
-				System.out.println(read);
-				pout.write("ok");
-				pout.flush();
-				pout.newLine();
-				EsclaveWalker.saveFile(esclave, pathToReceive);
+			System.out.println("Reception des fichiers");
+			String pathToReceive = PathEsclave+"/";
+			String read = null;
+			while (read != "STOP") {
+				EsclaveWalker.saveFile(pout, pin, pathToReceive);
 			}
 
 			esclave.close();

@@ -67,7 +67,9 @@ public class Serveur implements Runnable {
 			BufferedWriter pout = new BufferedWriter(new OutputStreamWriter(serveurOut));
 			InputStream serveurInput = clientSocket.getInputStream();
 			BufferedReader pin = new BufferedReader(new InputStreamReader(serveurInput));
+			System.out.println("Reception des infos");
 			String message = pin.readLine();
+			System.out.println(message);
 			String[] commande = message.split("\\*");
 
 			// Le dossier auquel le client refere
@@ -77,46 +79,66 @@ public class Serveur implements Runnable {
 
 			System.out.println(Racine + " " + ToDo);
 
-			if (ToDo.equals(ToDo)) {
+			if (ToDo.equals("pull")) {
+
+				System.out.println("Starting Pull");
 				// Referencement des fichiers sur le serveur depuis la racine
+				System.out.println("Referencement des fichiers sur le serveur depuis la racine ");
 				FileWalker walkerToPull = new FileWalker();
 				File PathsToPull = new File("D:/FileTree.txt");// création d'un fichier tampon
-				walkerToPull.sendPath(Racine, PathsToPull.toPath(), clientSocket);
+				walkerToPull.sendPath(Racine, PathsToPull.toPath(), pout);
 				PathsToPull.delete(); // on supprime ce fichier qui ne sera plus utiliser
 
+				System.out.println("Reception des Paths des fichiers à envoyer");
 				String ServerWalker = pin.readLine();
-				File PathsServeur = new File("D:/FileTree.txt");// création d'un fichier tampon
-				ArrayList<Fichier> fichiersClient = new ArrayList<Fichier>(); // liste des fichiers du serveur
-				walkerToPull.savePath(PathsServeur.toPath(), ServerWalker);
-				fichiersClient = walkerToPull.getFiles(PathsServeur.toPath());
-				PathsServeur.delete(); // on supprime ce fichier tampon qui ne sera plus utiliser
 
+				ArrayList<Fichier> fichiersClient = new ArrayList<Fichier>(); // liste des fichiers du serveur
+
+				if (!ServerWalker.equals("empty")) {
+					File PathsServeur = new File("D:/FileTree2.txt");// création d'un fichier tampon
+
+					walkerToPull.savePath(PathsServeur.toPath(), ServerWalker);
+					fichiersClient = walkerToPull.getFiles(PathsServeur.toPath());
+					PathsServeur.delete(); // on supprime ce fichier tampon qui ne sera plus utiliser
+				}
+
+				System.out.println("Envoi des fichiers");
 				ArrayList<Fichier> fichiersServeur = walkerToPull.walk(Racine);
-				Path pathToSend = Paths.get(Racine.toString()+"/");
-				for (Fichier f : fichiersClient) {
-					for (Fichier fserveur : fichiersServeur) {
-						if (fserveur.getLastModify() >= f.getLastModify()) {
-							try {
-								pout.write("fichier");
-								System.out.println("fichier");
-								pout.flush();
-								pout.newLine();
-								String read = pin.readLine();
-								System.out.println(read);
-								walkerToPull.sendFile(f, clientSocket, pathToSend);
-							} catch (InterruptedException e) {
-								System.out.println("Erreur lors de l'envoi du fichier");
-								e.printStackTrace();
+				String pathToSend = Racine.toString() + "/";
+				System.out.println(pathToSend.toString());
+
+				for (Fichier fserveur : fichiersServeur) {
+					boolean send = false;
+					for (Fichier f : fichiersClient) {
+						if (f.getPath().toString().equals(fserveur.getPath().toString())) {
+							if (fserveur.getLastModify() >= f.getLastModify()) {
+								try {
+									walkerToPull.sendFile(fserveur, pout, pin, pathToSend);
+									send = true;
+								} catch (InterruptedException e) {
+									System.out.println("Erreur lors de l'envoi du fichier");
+									e.printStackTrace();
+								}
 							}
 						}
 					}
+
+					if (send == false) {
+						try {
+							walkerToPull.sendFile(fserveur, pout, pin, pathToSend);
+						} catch (InterruptedException e) {
+							System.out.println("Erreur lors de l'envoi du fichier");
+							e.printStackTrace();
+						}
+					}
+
+					send = false;
+
 				}
 
-				pout.write("STOP");
-				pout.flush();
-				pout.newLine();
+				
 
-			} else if (ToDo == "push") {
+			} else if (ToDo.equals("push")) {
 
 			}
 

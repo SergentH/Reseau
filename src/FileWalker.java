@@ -4,16 +4,9 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
-import java.net.Socket;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-
 
 public class FileWalker {
 	static int depart = 0;
@@ -70,21 +63,11 @@ public class FileWalker {
 	 * save a file after receiving from the server
 	 * 
 	 */
-	@SuppressWarnings("resource")
 	public void savePath(Path WhereToSave, String message) throws IOException {
 		FileWriter writer = new FileWriter(WhereToSave.toString());
 		writer.write(message);
 		writer.flush();
 		writer.close();
-		/*
-		 * System.out.println("getFiles Attention les yeux");
-		 * 
-		 * ArrayList<Fichier> fichiers = getFiles(WhereToSave); for(Fichier fichier :
-		 * fichiers) {
-		 * System.out.println(fichier.getPath()+" "+fichier.getLastModify()+" "+fichier.
-		 * getIsDirectory()); }
-		 */
-
 		System.out.println("Paths save done");
 	}
 
@@ -111,8 +94,6 @@ public class FileWalker {
 
 		}
 		in.close();
-		// total prends bien tout
-		// System.out.println("total :"+ total);
 
 		String[] firstSplit = total.split("\\^");
 		boolean infos = true;
@@ -148,100 +129,104 @@ public class FileWalker {
 	 * send a file to the client FileToSend = path : File must be serialized before
 	 * using this method
 	 */
-
-	public void sendPath(Path WhereToWalk, Path FileToSend, Socket s) throws IOException {
+	public void sendPath(Path WhereToWalk, Path FileToSend, BufferedWriter sender) throws IOException {
 		FileWalker walker = new FileWalker();
 		ArrayList<Fichier> paths = walker.walk(WhereToWalk);
 
-		FileWriter writer = new FileWriter(FileToSend.toString());
-		for (Fichier fl : paths) {
-			writer.write("^");
-			writer.write(fl.getPath().toString());
-			writer.write("*");
-			writer.write(Long.toString(fl.getLastModify()));
-			writer.write("*");
-			writer.write(Boolean.toString(fl.getIsDirectory()));
-			writer.write("*");
-			writer.write(Long.toString(fl.getLongeur()));
-			writer.flush();
-		}
-		writer.close();
-		
-		OutputStream out = s.getOutputStream();
-		BufferedWriter sender = new BufferedWriter(new OutputStreamWriter(out));
+		if (!paths.isEmpty()) {
+			FileWriter writer = new FileWriter(FileToSend.toString());
+			for (Fichier fl : paths) {
+				writer.write("^");
+				writer.write(fl.getPath().toString());
+				writer.write("*");
+				writer.write(Long.toString(fl.getLastModify()));
+				writer.write("*");
+				writer.write(Boolean.toString(fl.getIsDirectory()));
+				writer.write("*");
+				writer.write(Long.toString(fl.getLongeur()));
+				writer.flush();
+			}
+			writer.close();
 
-		BufferedReader in = new BufferedReader(new FileReader(FileToSend.toString()));
-		String str;
-		while ((str = in.readLine()) != null) {
-			sender.write(str);
-			sender.flush();
-			sender.newLine();
-		}
+			BufferedReader in = new BufferedReader(new FileReader(FileToSend.toString()));
+			String str;
+			while ((str = in.readLine()) != null) {
+				sender.write(str);
+				sender.newLine();
+				sender.flush();
+			}
 
-		in.close();
+			in.close();
+		} else {
+			FileWriter writer = new FileWriter(FileToSend.toString());
+			writer.write("empty");
+
+			writer.close();
+
+			BufferedReader in = new BufferedReader(new FileReader(FileToSend.toString()));
+			String str;
+			while ((str = in.readLine()) != null) {
+				sender.write(str);
+				sender.newLine();
+				sender.flush();
+			}
+			in.close();
+
+		}
 
 		System.out.println("Paths sent");
 	}
 
-	public void sendFile(Fichier file, Socket s, Path FromWhere) throws IOException, InterruptedException {
+	public void sendFile(Fichier file, BufferedWriter pout, BufferedReader buffReadin, String FromWhere)
+			throws IOException, InterruptedException {
 		System.out.println("send File");
-		OutputStream out = s.getOutputStream();
-		BufferedWriter pout = new BufferedWriter(new OutputStreamWriter(out));
-		InputStream clientInput = s.getInputStream();
-		BufferedReader buffReadin = new BufferedReader(new InputStreamReader(clientInput));
 
-		System.out.println(file.getPath());
+		System.out.println("send file : " + file.getPath().toString());
 		pout.write(file.getPath().toString());
-		pout.flush();
 		pout.newLine();
-		
-		String reponse = buffReadin.readLine();
-		System.out.println(reponse);
+		pout.flush();
 
 		BufferedReader in = new BufferedReader(new FileReader((FromWhere + file.getPath().toString())));
+		System.out.println(FromWhere + file.getPath().toString());
 		String str;
 
 		while ((str = in.readLine()) != null) {
 			System.out.println(str);
 			pout.write(str);
-			pout.flush();
 			pout.newLine();
+			pout.flush();
 		}
-		
 		in.close();
+
 
 		System.out.println("Fin send File");
 	}
 
-
-	public void saveFile(Socket clientSocket,Path General) throws IOException {
+	public void saveFile(BufferedWriter pout, BufferedReader buffReadin, String General) throws IOException {
 		System.out.println("save File");
-		InputStream in = clientSocket.getInputStream();
-		BufferedReader buffReadin = new BufferedReader(new InputStreamReader(in));
-		OutputStream out = clientSocket.getOutputStream();
-		BufferedWriter pout = new BufferedWriter(new OutputStreamWriter(out));
 
 		String path = buffReadin.readLine();
 		System.out.println(path);
 
-		pout.write("path recu");
-		pout.flush();
-		pout.newLine();
-		
-		FileWriter writer = new FileWriter(General + path);
+		System.out.println(General + path);
+		File newFile = new File(General + path);
+		FileWriter writer = new FileWriter(newFile);
 
-		String read;
-
-		while ((read = buffReadin.readLine()) != null) {
+		/*
+		String read = buffReadin.readLine();
+		while (read != null) {
+			System.out.println("ecriture dans le fichier");
 			writer.write(read);
+			writer.flush();
+			read = buffReadin.readLine();
+		}
+		*/
+		for (String line = buffReadin.readLine(); line != null; line = buffReadin.readLine()) {
+			System.out.println("ecriture dans le fichier");
+			writer.write(line);
 			writer.flush();
 		}
 
-		String saved = "Saved";
-		writer.write(saved);
-		writer.flush();
-		writer.close();
-		
 		System.out.println("fin save File");
 	}
 
