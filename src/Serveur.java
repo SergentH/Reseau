@@ -108,12 +108,15 @@ public class Serveur implements Runnable {
 				System.out.println(pathToSend.toString());
 
 				for (Fichier fserveur : fichiersServeur) {
+					pout.write("ok");
+					pout.newLine();
+					pout.flush();
 					boolean send = false;
 					for (Fichier f : fichiersClient) {
 						if (f.getPath().toString().equals(fserveur.getPath().toString())) {
 							if (fserveur.getLastModify() >= f.getLastModify()) {
 								try {
-									walkerToPull.sendFile(fserveur, pout, pin, pathToSend);
+									walkerToPull.sendFile(fserveur, serveurOut, pout, pathToSend);
 									send = true;
 								} catch (InterruptedException e) {
 									System.out.println("Erreur lors de l'envoi du fichier");
@@ -122,10 +125,9 @@ public class Serveur implements Runnable {
 							}
 						}
 					}
-
 					if (send == false) {
 						try {
-							walkerToPull.sendFile(fserveur, pout, pin, pathToSend);
+							walkerToPull.sendFile(fserveur, serveurOut, pout, pathToSend);
 						} catch (InterruptedException e) {
 							System.out.println("Erreur lors de l'envoi du fichier");
 							e.printStackTrace();
@@ -133,13 +135,33 @@ public class Serveur implements Runnable {
 					}
 
 					send = false;
-
 				}
+				pout.write("STOP");
+				pout.newLine();
+				pout.flush();
 
 				
 
 			} else if (ToDo.equals("push")) {
 
+				System.out.println("Starting Pull");
+				// Referencement des fichiers sur le serveur depuis la racine
+				System.out.println("Referencement des fichiers sur le serveur depuis la racine ");
+				FileWalker walkerToPush = new FileWalker();
+				File PathsToPull = new File("D:/FileTree.txt");// création d'un fichier tampon
+				walkerToPush.sendPath(Racine, PathsToPull.toPath(), pout);
+				PathsToPull.delete(); // on supprime ce fichier qui ne sera plus utiliser
+				
+				String pathToReceive = Racine+"/";
+				String read = pin.readLine();
+				
+				while (!read.equals("STOP") ) {
+					walkerToPush.saveFile(serveurInput, pin, pathToReceive);
+					read = pin.readLine();
+				}
+				
+				
+				
 			}
 
 		} catch (IOException e) {

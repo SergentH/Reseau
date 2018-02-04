@@ -4,6 +4,8 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -177,17 +179,14 @@ public class FileWalker {
 		System.out.println("Paths sent");
 	}
 
-	public void sendFile(Fichier file, BufferedWriter pout, BufferedReader buffReadin, String FromWhere)
+	public void sendFile(Fichier file, OutputStream os, BufferedWriter pout, String FromWhere)
 			throws IOException, InterruptedException {
-		System.out.println("send File");
-
 		System.out.println("send file : " + file.getPath().toString());
 		pout.write(file.getPath().toString());
 		pout.newLine();
 		pout.flush();
-
-		BufferedReader in = new BufferedReader(new FileReader((FromWhere + file.getPath().toString())));
-		System.out.println(FromWhere + file.getPath().toString());
+		
+		BufferedReader in =  new BufferedReader(new FileReader(FromWhere + file.getPath().toString() ));
 		String str;
 
 		while ((str = in.readLine()) != null) {
@@ -196,36 +195,37 @@ public class FileWalker {
 			pout.newLine();
 			pout.flush();
 		}
+		
+		pout.write("stop");
+		pout.newLine();
+		pout.flush();
+		
 		in.close();
-
-
+	
 		System.out.println("Fin send File");
+
 	}
 
-	public void saveFile(BufferedWriter pout, BufferedReader buffReadin, String General) throws IOException {
+	public void saveFile(InputStream in, BufferedReader buffReadin, String General) throws IOException {
 		System.out.println("save File");
 
 		String path = buffReadin.readLine();
 		System.out.println(path);
 
 		System.out.println(General + path);
-		File newFile = new File(General + path);
-		FileWriter writer = new FileWriter(newFile);
+		File nouveauFichier = new File(General + path);
 
-		/*
-		String read = buffReadin.readLine();
-		while (read != null) {
-			System.out.println("ecriture dans le fichier");
-			writer.write(read);
-			writer.flush();
-			read = buffReadin.readLine();
+		FileWriter writer = new FileWriter(nouveauFichier);
+		BufferedWriter out = new BufferedWriter(writer);
+
+		String read;
+		while (!(read = buffReadin.readLine()).equals("stop") ) {
+			out.write(read);
+			out.newLine();
+			out.flush();
 		}
-		*/
-		for (String line = buffReadin.readLine(); line != null; line = buffReadin.readLine()) {
-			System.out.println("ecriture dans le fichier");
-			writer.write(line);
-			writer.flush();
-		}
+		out.close();
+
 
 		System.out.println("fin save File");
 	}

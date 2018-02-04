@@ -40,6 +40,7 @@ public class Esclave {
 		try {
 			System.out.println("Connected");
 			Socket esclave = new Socket(serveur, port);
+			
 			FileWalker EsclaveWalker = new FileWalker();
 			
 			OutputStream clientout = esclave.getOutputStream();
@@ -97,9 +98,11 @@ public class Esclave {
 			
 			System.out.println("Reception des fichiers");
 			String pathToReceive = PathEsclave+"/";
-			String read = null;
-			while (read != "STOP") {
-				EsclaveWalker.saveFile(pout, pin, pathToReceive);
+			String read = pin.readLine();
+			
+			while (!read.equals("STOP") ) {
+				EsclaveWalker.saveFile(clientInput, pin, pathToReceive);
+				read = pin.readLine();
 			}
 
 			esclave.close();
